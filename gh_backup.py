@@ -51,6 +51,14 @@ class GitSuccessType(Enum):
     FAILED = 1
     DENIED_OR_NOT_EXPORTED = 2
 
+def fetch_lfs_data(local_repo):
+    git = local_repo.git
+    log.info("Fetching LFS data")
+    output = git.lfs("fetch", "--all")
+    if output.find("error") != -1:
+        return False
+    return True
+
 def backup_repo(name, url, destination, login, password_or_pat):
     """
     Backup a specific repository to a destination folder. The repo will be stored under (destination)\\(name).git
@@ -82,6 +90,11 @@ def backup_repo(name, url, destination, login, password_or_pat):
     if cloned_repo.is_dirty():
         log.error("Repository is in a dirty state after clone")
         return GitSuccessType.FAILED
+
+    if cloned_repo:
+        lfs_success = fetch_lfs_data(cloned_repo)
+        if lfs_success is not True:
+            return GitSuccessType.FAILED
 
     return GitSuccessType.SUCCESS
 
