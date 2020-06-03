@@ -258,12 +258,22 @@ if __name__ == "__main__":
     BACKUP_SUCCESS = None
 
     if args.user:
-        BACKUP_SUCCESS = backup_user(new_gh_session, args.login, args.password, args.user, args.destination, args.wikis, args.tickets)
+        try:
+            BACKUP_SUCCESS = backup_user(new_gh_session, args.login, args.password, args.user, args.destination, args.wikis, args.tickets)
+        except Exception as e:
+            log.error("User backup failed: %s", e)
+            BACKUP_SUCCESS = False
 
     if args.organization:
-        BACKUP_SUCCESS = backup_organization(new_gh_session, args.login, args.password, args.organization, args.destination, args.wikis, args.tickets)
+        try:
+            BACKUP_SUCCESS = backup_organization(new_gh_session, args.login, args.password, args.organization, args.destination, args.wikis, args.tickets)
+        except Exception as e:
+            log.error("Organization backup failed: %s", e)
+            BACKUP_SUCCESS = False
 
     if BACKUP_SUCCESS:
+        log.info("Backup succeeded!")
         sys.exit(0)
     else:
+        log.info("Backup Failed!")
         sys.exit(1)
