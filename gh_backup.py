@@ -76,7 +76,9 @@ def backup_repo(name, url, destination, login, password_or_pat):
 
     try:
         log.info("name: %s, URL: %s, Dest: %s", name, url, final_destination)
-        cloned_repo = Repo.clone_from(url, destination, multi_options=clone_options)
+        domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
+        url_with_login = url.replace("https://github.com/", domain_with_login)
+        cloned_repo = Repo.clone_from(url_with_login, destination, multi_options=clone_options)
     except git.exc.GitCommandError as giterror:
         log.error("Git raised error: %s", giterror)
         if giterror.stderr.find("access denied or repository not exported") != -1:
