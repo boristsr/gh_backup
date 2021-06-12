@@ -13,6 +13,8 @@ import logging
 import argparse
 import sys
 import shutil
+import os
+import stat
 from os import path
 from enum import Enum
 
@@ -63,9 +65,16 @@ def fetch_lfs_data(local_repo):
         return False
     return True
 
+def on_rm_error( func, path, exc_info):
+    # from: https://stackoverflow.com/a/4829285
+    # path contains the path of the file that couldn't be removed
+    # let's just assume that it's read-only and unlink it.
+    os.chmod(path, stat.S_IWRITE)
+    os.unlink(path)
+
 def wipe_existing_repo(destination):
     log.info("Failed to fetch updates for existing repo, deleting to start fresh")
-    shutil.rmtree(destination)
+    shutil.rmtree(destination, onerror = on_rm_error )
 
 def fetch_repo_updates(name, url, destination):
     #Try finding and updating existing repo
