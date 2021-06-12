@@ -12,6 +12,7 @@ You can specify a user or an organsation to backup, but not both.
 import logging
 import argparse
 import sys
+import shutil
 from os import path
 from enum import Enum
 
@@ -52,9 +53,12 @@ class GitSuccessType(Enum):
     DENIED_OR_NOT_EXPORTED = 2
 
 def fetch_lfs_data(local_repo):
-    git = local_repo.git
+    """
+    Fetches all lfs data for an existing repository
+    """
+    git_raw = local_repo.git
     log.info("Fetching LFS data")
-    output = git.lfs("fetch", "--all")
+    output = git_raw.lfs("fetch", "--all")
     if output.find("error") != -1:
         return False
     return True
@@ -74,16 +78,53 @@ def backup_repo(name, url, destination, login, password_or_pat):
     cloned_repo = None
     final_destination = path.join(destination, name + ".git")
 
-    try:
-        log.info("name: %s, URL: %s, Dest: %s", name, url, final_destination)
-        domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
-        url_with_login = url.replace("https://github.com/", domain_with_login)
-        cloned_repo = Repo.clone_from(url_with_login, destination, multi_options=clone_options)
-    except git.exc.GitCommandError as giterror:
-        log.error("Git raised error: %s", giterror)
-        if giterror.stderr.find("access denied or repository not exported") != -1:
-            return GitSuccessType.DENIED_OR_NOT_EXPORTED
-        return GitSuccessType.FAILED
+    #Try finding and updating existing repo
+    existing_repo_update_failed = False
+    if path.exists(final_destination):
+        #open repo
+        existing_repo = Repo(final_destination)
+
+        #do sanity checks on repo
+        if existing_repo is None:
+            existing_repo_update_failed = True
+        if existing_repo.is_dirty():
+            existing_repo_update_failed = True
+        if existing_repo.bare is False:
+            existing_repo_update_failed = True
+
+        #try updating
+        if existing_repo_update_failed is False:
+            try:
+                for remote in existing_repo.remotes:
+                    remote.fetch()
+            except git.exc.GitCommandError as giterror:
+                log.error("Git raised error: %s", giterror)
+                existing_repo_update_failed = True
+
+        #do sanity checks on repo
+        if existing_repo is None:
+            existing_repo_update_failed = True
+        if existing_repo.is_dirty():
+            existing_repo_update_failed = True
+        if existing_repo.bare is False:
+            existing_repo_update_failed = True
+
+        #if failed, delete existing repo
+        if existing_repo_update_failed is True:
+            shutil.rmtree(final_destination)
+
+    #If updating an existing repo failed, then clone to a new repo
+    if existing_repo_update_failed is True:
+        try:
+            log.info("name: %s, URL: %s, Dest: %s", name, url, final_destination)
+            domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
+            url_with_login = url.replace("https://github.com/", domain_with_login)
+            cloned_repo = Repo.clone_from(url_with_login, destination, multi_options=clone_options)
+        except git.exc.GitCommandError as giterror:
+            log.error("Git raised error: %s", giterror)
+            if giterror.stderr.find("access denied or repository not exported") != -1:
+                return GitSuccessType.DENIED_OR_NOT_EXPORTED
+            return GitSuccessType.FAILED
 
     if cloned_repo is None:
         log.error("Cloned repository is None")
