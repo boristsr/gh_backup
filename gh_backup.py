@@ -80,7 +80,7 @@ def backup_repo(name, url, destination, login, password_or_pat):
 
     #Try finding and updating existing repo
     repo_exists = False
-    log.info("Checking if repo exists in Dest: %s", name, url, final_destination)
+    log.info("Checking if repo exists in Dest: %s", final_destination)
     if path.exists(final_destination):
         repo_exists = True
         existing_repo_update_failed = False
