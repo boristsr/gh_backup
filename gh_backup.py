@@ -79,9 +79,12 @@ def backup_repo(name, url, destination, login, password_or_pat):
     final_destination = path.join(destination, name + ".git")
 
     #Try finding and updating existing repo
-    existing_repo_update_failed = False
+    repo_exists = False
+    log.info("Checking if repo exists in Dest: %s", name, url, final_destination)
     if path.exists(final_destination):
-        log.info("Fetching repo updates: name: %s, URL: %s, Dest: %s", name, url, final_destination)
+        repo_exists = True
+        existing_repo_update_failed = False
+        log.info("Repo exists, fetching updates: name: %s, URL: %s, Dest: %s", name, url, final_destination)
         #open repo
         cloned_repo = Repo(final_destination)
 
@@ -114,10 +117,11 @@ def backup_repo(name, url, destination, login, password_or_pat):
         if existing_repo_update_failed is True:
             log.info("Failed to fetch updates for existing repo, deleting to start fresh")
             cloned_repo = None
+            repo_exists = False
             shutil.rmtree(final_destination)
 
     #If updating an existing repo failed, then clone to a new repo
-    if existing_repo_update_failed is True:
+    if repo_exists is False:
         log.info("Cloning repo: name: %s, URL: %s, Dest: %s", name, url, final_destination)
         try:
             domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
