@@ -103,7 +103,7 @@ def backup_repo(name, url, destination, login, password_or_pat):
             except git.exc.GitCommandError as giterror:
                 log.error("Git raised error: %s", giterror)
                 existing_repo_update_failed = True
-            except:
+            except Exception as e:
                 log.error("General error raised during fetch")
                 existing_repo_update_failed = True
 
@@ -134,6 +134,9 @@ def backup_repo(name, url, destination, login, password_or_pat):
             if giterror.stderr.find("access denied or repository not exported") != -1:
                 return GitSuccessType.DENIED_OR_NOT_EXPORTED
             return GitSuccessType.FAILED
+        except Exception as e:
+            log.error("General error raised during clone")
+            existing_repo_update_failed = True
 
     if cloned_repo is None:
         log.error("Cloned repository is None")
