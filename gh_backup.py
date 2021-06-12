@@ -63,6 +63,68 @@ def fetch_lfs_data(local_repo):
         return False
     return True
 
+def wipe_existing_repo(destination):
+    log.info("Failed to fetch updates for existing repo, deleting to start fresh")
+    shutil.rmtree(destination)
+
+def fetch_repo_updates(name, url, destination):
+    #Try finding and updating existing repo
+    existing_repo = None
+    log.info("Checking if repo exists in Dest: %s", destination)
+    if path.exists(destination):
+        repo_exists = True
+        repo_update_failed = False
+        log.info("Repo exists, fetching updates: name: %s, URL: %s, Dest: %s", name, url, destination)
+        #open repo
+        existing_repo = None
+        try:
+            existing_repo = Repo(destination)
+        except Exception as e:
+            log.error("General error raised when opening existing repo %s", e)
+            wipe_existing_repo(destination)
+            return existing_repo
+
+        #do sanity checks on repo
+        if existing_repo is None:
+            wipe_existing_repo(destination)
+            return existing_repo
+        if existing_repo.is_dirty():
+            wipe_existing_repo(destination)
+            return existing_repo
+        if existing_repo.bare is False:
+            wipe_existing_repo(destination)
+            return existing_repo
+
+        #try updating
+        if repo_update_failed is False:
+            try:
+                for remote in existing_repo.remotes:
+                    remote.fetch()
+            except git.exc.GitCommandError as giterror:
+                log.error("Git raised error: %s", giterror)
+                wipe_existing_repo(destination)
+                return existing_repo
+            except Exception as e:
+                log.error("General error raised during fetch")
+                wipe_existing_repo(destination)
+                return existing_repo
+
+        #do sanity checks on repo
+        if existing_repo is None:
+            wipe_existing_repo(destination)
+            return existing_repo
+        if existing_repo.is_dirty():
+            wipe_existing_repo(destination)
+            return existing_repo
+        if existing_repo.bare is False:
+            wipe_existing_repo(destination)
+            return existing_repo
+
+        #if failed, delete existing repo
+        if repo_update_failed is True:
+            wipe_existing_repo(destination)
+
+
 def backup_repo(name, url, destination, login, password_or_pat):
     """
     Backup a specific repository to a destination folder. The repo will be stored under (destination)\\(name).git
@@ -77,58 +139,10 @@ def backup_repo(name, url, destination, login, password_or_pat):
     clone_options = ["--quiet", "--mirror"]
     cloned_repo = None
 
-    #Try finding and updating existing repo
-    repo_exists = False
-    log.info("Checking if repo exists in Dest: %s", destination)
-    if path.exists(destination):
-        repo_exists = True
-        existing_repo_update_failed = False
-        log.info("Repo exists, fetching updates: name: %s, URL: %s, Dest: %s", name, url, destination)
-        #open repo
-        clone_repo = None
-        try:
-            cloned_repo = Repo(destination)
-        except Exception as e:
-            log.error("General error raised when opening existing repoL %s", e)
-            existing_repo_update_failed = True
-
-        #do sanity checks on repo
-        if cloned_repo is None:
-            existing_repo_update_failed = True
-        if cloned_repo.is_dirty():
-            existing_repo_update_failed = True
-        if cloned_repo.bare is False:
-            existing_repo_update_failed = True
-
-        #try updating
-        if existing_repo_update_failed is False:
-            try:
-                for remote in cloned_repo.remotes:
-                    remote.fetch()
-            except git.exc.GitCommandError as giterror:
-                log.error("Git raised error: %s", giterror)
-                existing_repo_update_failed = True
-            except Exception as e:
-                log.error("General error raised during fetch")
-                existing_repo_update_failed = True
-
-        #do sanity checks on repo
-        if cloned_repo is None:
-            existing_repo_update_failed = True
-        if cloned_repo.is_dirty():
-            existing_repo_update_failed = True
-        if cloned_repo.bare is False:
-            existing_repo_update_failed = True
-
-        #if failed, delete existing repo
-        if existing_repo_update_failed is True:
-            log.info("Failed to fetch updates for existing repo, deleting to start fresh")
-            cloned_repo = None
-            repo_exists = False
-            shutil.rmtree(destination)
+    local_repo = fetch_repo_updates(name, url, destination)
 
     #If updating an existing repo failed, then clone to a new repo
-    if repo_exists is False:
+    if local_repo is None:
         log.info("Cloning repo: name: %s, URL: %s, Dest: %s", name, url, destination)
         try:
             domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
@@ -143,18 +157,18 @@ def backup_repo(name, url, destination, login, password_or_pat):
             log.error("General error raised during clone")
             existing_repo_update_failed = True
 
-    if cloned_repo is None:
-        log.error("Cloned repository is None")
-        return GitSuccessType.FAILED
-
-    if cloned_repo.is_dirty():
-        log.error("Repository is in a dirty state after clone")
-        return GitSuccessType.FAILED
-
-    if cloned_repo:
-        lfs_success = fetch_lfs_data(cloned_repo)
-        if lfs_success is not True:
+        if cloned_repo is None:
+            log.error("Cloned repository is None")
             return GitSuccessType.FAILED
+
+        if cloned_repo.is_dirty():
+            log.error("Repository is in a dirty state after clone")
+            return GitSuccessType.FAILED
+
+        if cloned_repo:
+            lfs_success = fetch_lfs_data(cloned_repo)
+            if lfs_success is not True:
+                return GitSuccessType.FAILED
 
     return GitSuccessType.SUCCESS
 
