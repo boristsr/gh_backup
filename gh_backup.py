@@ -112,12 +112,14 @@ def backup_repo(name, url, destination, login, password_or_pat):
 
         #if failed, delete existing repo
         if existing_repo_update_failed is True:
+            log.info("Failed to fetch updates for existing repo, deleting to start fresh")
+            cloned_repo = None
             shutil.rmtree(final_destination)
 
     #If updating an existing repo failed, then clone to a new repo
     if existing_repo_update_failed is True:
+        log.info("Cloning repo: name: %s, URL: %s, Dest: %s", name, url, final_destination)
         try:
-            log.info("Cloning repo: name: %s, URL: %s, Dest: %s", name, url, final_destination)
             domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
             url_with_login = url.replace("https://github.com/", domain_with_login)
             cloned_repo = Repo.clone_from(url_with_login, destination, multi_options=clone_options)
