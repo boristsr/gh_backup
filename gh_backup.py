@@ -85,7 +85,12 @@ def backup_repo(name, url, destination, login, password_or_pat):
         existing_repo_update_failed = False
         log.info("Repo exists, fetching updates: name: %s, URL: %s, Dest: %s", name, url, destination)
         #open repo
-        cloned_repo = Repo(destination)
+        clone_repo = None
+        try:
+            cloned_repo = Repo(destination)
+        except Exception as e:
+            log.error("General error raised when opening existing repoL %s", e)
+            existing_repo_update_failed = True
 
         #do sanity checks on repo
         if cloned_repo is None:
