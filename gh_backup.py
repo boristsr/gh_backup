@@ -81,32 +81,33 @@ def backup_repo(name, url, destination, login, password_or_pat):
     #Try finding and updating existing repo
     existing_repo_update_failed = False
     if path.exists(final_destination):
+        log.info("Fetching repo updates: name: %s, URL: %s, Dest: %s", name, url, final_destination)
         #open repo
-        existing_repo = Repo(final_destination)
+        cloned_repo = Repo(final_destination)
 
         #do sanity checks on repo
-        if existing_repo is None:
+        if cloned_repo is None:
             existing_repo_update_failed = True
-        if existing_repo.is_dirty():
+        if cloned_repo.is_dirty():
             existing_repo_update_failed = True
-        if existing_repo.bare is False:
+        if cloned_repo.bare is False:
             existing_repo_update_failed = True
 
         #try updating
         if existing_repo_update_failed is False:
             try:
-                for remote in existing_repo.remotes:
+                for remote in cloned_repo.remotes:
                     remote.fetch()
             except git.exc.GitCommandError as giterror:
                 log.error("Git raised error: %s", giterror)
                 existing_repo_update_failed = True
 
         #do sanity checks on repo
-        if existing_repo is None:
+        if cloned_repo is None:
             existing_repo_update_failed = True
-        if existing_repo.is_dirty():
+        if cloned_repo.is_dirty():
             existing_repo_update_failed = True
-        if existing_repo.bare is False:
+        if cloned_repo.bare is False:
             existing_repo_update_failed = True
 
         #if failed, delete existing repo
@@ -116,7 +117,7 @@ def backup_repo(name, url, destination, login, password_or_pat):
     #If updating an existing repo failed, then clone to a new repo
     if existing_repo_update_failed is True:
         try:
-            log.info("name: %s, URL: %s, Dest: %s", name, url, final_destination)
+            log.info("Cloning repo: name: %s, URL: %s, Dest: %s", name, url, final_destination)
             domain_with_login = f"https://{login}:{password_or_pat}@github.com/"
             url_with_login = url.replace("https://github.com/", domain_with_login)
             cloned_repo = Repo.clone_from(url_with_login, destination, multi_options=clone_options)
