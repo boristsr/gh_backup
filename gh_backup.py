@@ -103,6 +103,9 @@ def backup_repo(name, url, destination, login, password_or_pat):
             except git.exc.GitCommandError as giterror:
                 log.error("Git raised error: %s", giterror)
                 existing_repo_update_failed = True
+            except:
+                log.error("General error raised during fetch")
+                existing_repo_update_failed = True
 
         #do sanity checks on repo
         if cloned_repo is None:
