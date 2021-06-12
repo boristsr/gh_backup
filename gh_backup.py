@@ -307,6 +307,7 @@ if __name__ == "__main__":
     BACKUP_SUCCESS = None
 
     if args.user:
+        log.info("Beginning backup of user: %s", args.user)
         try:
             BACKUP_SUCCESS = backup_user(new_gh_session, args.login, args.password, args.user, args.destination, args.wikis, args.tickets)
         except Exception as e:
@@ -314,6 +315,7 @@ if __name__ == "__main__":
             BACKUP_SUCCESS = False
 
     if args.organization:
+        log.info("Beginning backup of organization: %s", args.organization)
         try:
             BACKUP_SUCCESS = backup_organization(new_gh_session, args.login, args.password, args.organization, args.destination, args.wikis, args.tickets)
         except Exception as e:
