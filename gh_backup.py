@@ -124,6 +124,8 @@ def fetch_repo_updates(name, url, destination):
         if repo_update_failed is True:
             wipe_existing_repo(destination)
 
+    return existing_repo
+
 
 def backup_repo(name, url, destination, login, password_or_pat):
     """
