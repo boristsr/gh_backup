@@ -53,6 +53,7 @@ class GitSuccessType(Enum):
     SUCCESS = 0
     FAILED = 1
     DENIED_OR_NOT_EXPORTED = 2
+    REPO_NOT_FOUND = 3
 
 def fetch_lfs_data(local_repo):
     """
@@ -163,6 +164,8 @@ def backup_repo(name, url, destination, login, password_or_pat):
             log.error("Git raised error: %s", giterror)
             if giterror.stderr.find("access denied or repository not exported") != -1:
                 return GitSuccessType.DENIED_OR_NOT_EXPORTED
+            if giterror.stderr.find("remote: Repository not found") != -1:
+                return GitSuccessType.REPO_NOT_FOUND
             return GitSuccessType.FAILED
         except Exception as e:
             log.error("General error raised during clone")
@@ -238,7 +241,9 @@ def backup_repos(repos, login, password, src_username: str, destination: str = "
                 wiki_dest = path.join(destination, wiki_dest_name)
                 wiki_success = backup_wiki_repo(repo.name, repo.clone_url, wiki_dest, login, password)
                 if wiki_success is GitSuccessType.DENIED_OR_NOT_EXPORTED:
-                    log.info("Wiki probably doesn't exist. Usually safe to ignore")
+                    log.info("DENIED OR NOT EXPORTED: Wiki probably doesn't exist. Usually safe to ignore")
+                if wiki_success is GitSuccessType.REPO_NOT_FOUND:
+                    log.info("NOT FOUND: Wiki probably doesn't exist. Usually safe to ignore")
                 if wiki_success is GitSuccessType.FAILED:
                     encountered_errors = True
                 log.info("Backup wiki: %s, %s", repo_dest, repo.clone_url)
